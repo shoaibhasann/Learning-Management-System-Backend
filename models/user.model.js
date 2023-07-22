@@ -1,6 +1,7 @@
 import { Schema, model } from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 // Create the user schema
 const userSchema = new Schema(
@@ -113,6 +114,29 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
     throw error;
   }
 };
+
+// Method to generate forgot password token
+userSchema.methods.generateForgotPasswordToken = async function(){
+  try {
+    // Generate a random token using crypto.randomBytes
+    const forgotToken = crypto.randomBytes(20).toString("hex");
+
+    // Create a hash of the token using sha256 algorithm
+    this.forgotPasswordToken = crypto
+      .createHash("sha256")
+      .update(forgotToken) 
+      .digest("hex");
+
+    // Set the expiry time for the forgot password token (15 minutes from now)
+    this.forgotPasswordExpiry = Date.now() + 15 * 60 * 1000;
+
+    
+    return forgotToken;
+  } catch (error) {
+    // If an error occurs during the generation, throw the error
+    throw error;
+  }
+}
 
 // Create the User model based on the userSchema
 const User = model("User", userSchema);
