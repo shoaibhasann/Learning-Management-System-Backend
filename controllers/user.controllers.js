@@ -2,6 +2,7 @@ import AppError from "../utils/error.util.js";
 import User from "../models/user.model.js";
 import cloudinary from "cloudinary";
 import fs from "fs/promises";
+import crypto from "crypto";
 
 const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // Valid for 7 days
@@ -131,7 +132,7 @@ const login = async (req, res, next) => {
 
 
 // controller function to user logout process
-const logout = (req, res) => {
+const logout = (req, res, next) => {
   try {
     // Clear the JWT token in the cookie
     res.cookie("token", null, {
@@ -192,7 +193,7 @@ const forgotPassword = async (req, res, next) => {
     await emailExists.save();
 
     // Create the forgot password URL for the email
-    const forgotPasswordURL = `${process.env.CLIENT_URL}/forgot-password/${forgotPasswordToken}`;
+    const forgotPasswordURL = `${process.env.CLIENT_URL}/reset/${forgotPasswordToken}`;
     const subject = "Reset Password";
 
     // Create the content of the reset password email as an HTML link
@@ -230,4 +231,159 @@ const forgotPassword = async (req, res, next) => {
   }
 };
 
-export { register, login, logout, getProfile, forgotPassword };
+// controller function to reset password process
+const resetPassword = async (req,res,next) => {
+      try{
+         // extract token from request parameters
+         const { resetToken } = req.params;
+
+         // extract new password 
+         const { password } = req.body;
+
+         // check new password is provided or not
+         if(!password){
+            return next(new AppError(400,'Password is required'));
+         }
+
+         const forgotPasswordToken = crypto
+               .createHash('sha256')
+               .update(resetToken)
+               .digest('hex');
+
+          const user = await User.findOne({
+                forgotPasswordToken,
+                forgotPasswordExpiry: { $gt: Date.now() }
+          });
+          
+          if(!user){
+             return next(new AppError(400,'Token is invalid or expired, please try again'));
+          }
+
+          // update user new password with old password
+          user.password = password;
+          user.forgotPasswordToken = undefined;
+          user.forgotPasswordExpiry = undefined;
+
+          await user.save();
+
+          res.status(200).json({
+             success: true,
+             message: 'Password changed successfully'
+          });
+
+      } catch(error){
+          return next(new AppError(500,error.message));
+      }
+}
+
+// controller function to change password 
+const changePassword = async (req,res,next) => {
+      try {
+        // extract info from request body
+        const { oldPassword, newPassword } = req.body;
+
+        // extract user id
+        const { id } = req.user;
+
+        // check all fields are provided or not 
+        if(!oldPassword || !newPassword){
+           return next(new AppError(400,'All fields are required'));
+        }
+
+        // find user
+        const user = await User.findById(id).select('+password');
+
+        // check user exists or not
+        if(!user){
+           return next(new AppError(400,'User does not exists'));
+        }
+
+        // check old password match with stored password
+        const isPasswordValid = await user.comparePassword(oldPassword);
+
+        if(!isPasswordValid){
+           return next(new AppError(400,'Old password is incorrect'));
+        }
+
+        user.password = newPassword;
+
+        await user.save();
+
+        user.password = undefined;
+
+        res.status(200).json({
+           success: true,
+           message: 'Password changed successfully'
+        });
+       
+      } catch (error) {
+         return next(new AppError(500,error.message));
+      }
+}
+
+// controller function to update user profile information 
+const updateProfile = async (req, res, next) => {
+  try {
+    // Extract full name from request body
+    const { fullName } = req.body;
+
+    // Extract user id from token
+    const { id } = req.user;
+
+    // Find the user in the database
+    const user = await User.findById(id);
+
+    // Check if the user exists
+    if (!user) {
+      return next(new AppError(400, "User does not exist"));
+    }
+
+    // Update user full name
+    if (fullName) {
+      user.fullName = fullName;
+    }
+
+    // Delete and update user profile image
+    if (req.file) {
+      // Remove the existing profile image from Cloudinary
+      await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+
+      try {
+        // Upload the new profile image to Cloudinary
+        const result = await cloudinary.v2.uploader.upload(req.file.path, {
+          folder: "lms",
+          width: 250,
+          height: 250,
+          gravity: "faces",
+          crop: "fill",
+        });
+
+        if (result) {
+          user.avatar.public_id = result.public_id;
+          user.avatar.secure_url = result.secure_url;
+        }
+
+        // Remove the file from the upload folder after uploading to Cloudinary
+        fs.rm(`uploads/${req.file.filename}`);
+        console.log(result);
+      } catch (error) {
+        return next(
+          new AppError(400, "File not uploaded, please try again" || error)
+        );
+      }
+    }
+
+    // Save the updated user profile to the database
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User profile updated successfully",
+    });
+    console.log(req.body);
+  } catch (error) {
+    return next(new AppError(500, error.message));
+  }
+};
+
+export { register, login, logout, getProfile, forgotPassword, resetPassword, changePassword, updateProfile };
