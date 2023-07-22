@@ -11,6 +11,12 @@ const app = express();
 // Middleware for Parsing request body 
 app.use(express.json());
 
+// Middleware for url decode
+app.use(express.urlencoded({
+    extended: true,
+   
+}));
+
 // Middleware for loggers activity
 app.use(morgan("dev"));
 
