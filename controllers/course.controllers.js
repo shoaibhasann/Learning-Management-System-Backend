@@ -84,8 +84,7 @@ const createCourse = async (req,res,next) => {
 
           // remove file from the upload folder
           fs.rm(`uploads/${req.file.filename}`);
-          console.log(req.file);
-          console.log(result);
+
         } catch (error) {
           return next(
             new AppError(400, "file not uploaded, please try again" || error)
@@ -170,5 +169,77 @@ const deleteCourse = async (req, res, next) => {
   }
 };
 
+// controller function add lectures in existing course
+const addLectureToCourseById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, description } = req.body;
 
-export { getAllCourses, getLecturesByCourseId, createCourse, updateCourse, deleteCourse };
+    // Check all fields provided or not
+    if (!title || !description) {
+      return next(new AppError(400, "All fields are required"));
+    }
+
+    // Find the course by ID
+    const course = await Course.findById(id);
+
+    // Check if the course exists
+    if (!course) {
+      // If the course with the given ID does not exist, return an error
+      return next(new AppError(400, "Course with the given ID does not exist"));
+    }
+
+    // Create a new lecture object
+    const lectureData = {
+      title,
+      description,
+      lecture: {},
+    };
+
+    // Upload thumbnail file
+    if (req.file) {
+      try {
+        const result = await cloudinary.v2.uploader.upload(req.file.path, {
+          folder: "lms",
+        });
+
+        if (result) {
+          // Update the course with the thumbnail details
+          lectureData.lecture.public_id = result.public_id;
+          lectureData.lecture.secure_url = result.secure_url;
+        }
+
+        // Remove file from the upload folder
+        fs.rmSync(`uploads/${req.file.filename}`);
+
+      } catch (error) {
+        return next(
+          new AppError(400, "File not uploaded, please try again" || error)
+        );
+      }
+    }
+
+    // Add the new lecture to the course's lectures array
+    course.lectures.push(lectureData);
+
+    // Increase the numberOfLectures field by 1
+    course.numberOfLectures = course.lectures.length;
+
+    // Save the updated course in the database
+    await course.save();
+
+    // Respond with success message and updated course details
+    res.status(200).json({
+      success: true,
+      message: "Lecture added to the course successfully",
+      course,
+    });
+  } catch (error) {
+    // If an error occurs during the database operation or response handling, pass it to the error middleware
+    return next(new AppError(500, error.message || "Internal Server Error"));
+  }
+};
+
+
+
+export { getAllCourses, getLecturesByCourseId, createCourse, updateCourse, deleteCourse, addLectureToCourseById };
