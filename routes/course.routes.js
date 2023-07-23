@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {createCourse, deleteCourse, getAllCourses, getLecturesByCourseId, updateCourse} from "../controllers/course.controllers.js";
+import {addLectureToCourseById, createCourse, deleteCourse, getAllCourses, getLecturesByCourseId, updateCourse} from "../controllers/course.controllers.js";
 import { authorizedRoles, isLoggedIn } from "../middlewares/auth.middleware.js";
 import upload from "../middlewares/multer.middleware.js";
 
@@ -17,7 +17,10 @@ router.get("/:id", isLoggedIn,  getLecturesByCourseId);
 // Route to update an existing course
 router.put("/:id", isLoggedIn, authorizedRoles('ADMIN'), updateCourse);
 
+// Route to create lectures in an existing course
+router.post("/:id", isLoggedIn, authorizedRoles("ADMIN"), upload.single("lecture"), addLectureToCourseById);
+
 // Route to delete an existing course
-router.delete("/:id", isLoggedIn, authorizedRoles('ADMIN'), deleteCourse);
+router.delete("/:id", isLoggedIn, authorizedRoles('ADMIN'), upload.single("thumbnail"), deleteCourse);
 
 export default router;
