@@ -37,7 +37,6 @@ const register = async (req, res, next) => {
         secure_url: "http://dummyurl.com",
       },
     });
-    console.log("file details: ", JSON.stringify(req.file));
     // avatar file upload
     if(req.file){
       
@@ -365,7 +364,7 @@ const updateProfile = async (req, res, next) => {
 
         // Remove the file from the upload folder after uploading to Cloudinary
         fs.rm(`uploads/${req.file.filename}`);
-        console.log(result);
+      
       } catch (error) {
         return next(
           new AppError(400, "File not uploaded, please try again" || error)
@@ -380,7 +379,7 @@ const updateProfile = async (req, res, next) => {
       success: true,
       message: "User profile updated successfully",
     });
-    console.log(req.body);
+
   } catch (error) {
     return next(new AppError(500, error.message));
   }
