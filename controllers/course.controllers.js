@@ -196,7 +196,7 @@ const addLectureToCourseById = async (req, res, next) => {
       lecture: {},
     };
 
-    // Upload thumbnail file
+    // thumbnail file upload
     if (req.file) {
       try {
         const result = await cloudinary.v2.uploader.upload(req.file.path, {
@@ -204,17 +204,16 @@ const addLectureToCourseById = async (req, res, next) => {
         });
 
         if (result) {
-          // Update the course with the thumbnail details
           lectureData.lecture.public_id = result.public_id;
           lectureData.lecture.secure_url = result.secure_url;
         }
 
-        // Remove file from the upload folder
-        fs.rmSync(`uploads/${req.file.filename}`);
+        // remove file from the upload folder
+        fs.rm(`uploads/${req.file.filename}`);
 
       } catch (error) {
         return next(
-          new AppError(400, "File not uploaded, please try again" || error)
+          new AppError(400, "file not uploaded, please try again" || error)
         );
       }
     }
@@ -240,6 +239,39 @@ const addLectureToCourseById = async (req, res, next) => {
   }
 };
 
+// controllers function to delete lecture from an existing course
+const deleteLectureById = async (req, res, next) => {
+  try {
+    const courseId = req.params.courseId; // Course ID
+    const lectureId = req.params.lectureId; // Lecture ID to be deleted
+
+    console.log("Course ID:", courseId);
+    console.log("Lecture ID:", lectureId);
+
+    const course = await Course.findByIdAndUpdate(
+      courseId,
+      { $pull: { lectures: { _id: lectureId } } },
+      { new: true }
+    );
+
+    console.log("Updated Course:", course);
+
+    if (!course) {
+      console.log("Course not found");
+      return next(new AppError(400, "Course with the given ID does not exist"));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Lecture deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    return next(new AppError(500, error.message || "Internal Server Error"));
+  }
+};
 
 
-export { getAllCourses, getLecturesByCourseId, createCourse, updateCourse, deleteCourse, addLectureToCourseById };
+
+
+export { getAllCourses, getLecturesByCourseId, createCourse, updateCourse, deleteCourse, addLectureToCourseById, deleteLectureById };
