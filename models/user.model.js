@@ -56,6 +56,12 @@ const userSchema = new Schema(
       default: "User",
     },
 
+    // subscription details
+    subscription: {
+      id: String,
+      status: String
+    },
+
     // Fields related to the forgot password feature
     forgotPasswordToken: String,
     forgotPasswordExpiry: Date,
