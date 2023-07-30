@@ -5,6 +5,7 @@ import morgan from "morgan";
 import userRoutes from "./routes/user.routes.js";
 import courseRoutes from "./routes/course.routes.js"
 import errorMiddleware from "./middlewares/error.middleware.js";
+import PaymentRoutes from "./routes/payment.routes.js"
 
 // Create an instance of express
 const app = express();
@@ -35,6 +36,9 @@ app.use('/api/v1/user', userRoutes);
 
 // Handling course routes
 app.use('/api/v1/courses', courseRoutes);
+
+// Handling payment routes
+app.use('/api/v1/payment', PaymentRoutes);
 
 // Default route
 app.use('/backend', (req,res) => {
