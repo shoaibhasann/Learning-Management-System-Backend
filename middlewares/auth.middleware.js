@@ -1,3 +1,4 @@
+import subscriptions from "razorpay/dist/types/subscriptions.js";
 import AppError from "../utils/error.util.js";
 import jwt from "jsonwebtoken";
 
@@ -28,7 +29,20 @@ const authorizedRoles = (...roles) => async (req,res,next) => {
     next();
 }
 
+// Middleware to check user subscribed or not
+const authorizeSubscriber = async(req,res,next) => {
+    const subscription = req.user.subscription;
+    const currentUserRole = req.user.role;
+
+    if(currentUserRole === 'Admin' && subscription.status !== 'active'){
+        return next(new AppError(403, 'Please subscribe to saw the lecture details.'))
+    }
+
+    next();
+}
+
 export{
     isLoggedIn,
-    authorizedRoles
+    authorizedRoles,
+    authorizeSubscriber
 }
