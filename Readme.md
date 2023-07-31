@@ -1,3 +1,4 @@
+
 # Learning Management System Backend
 
 Welcome to the Learning Management System (LMS) backend project! This project provides API endpoints for user registration, login, course management, and lecture management. It includes authentication and authorization to differentiate between regular users and administrators. Administrators have additional privileges to create, update, and delete courses, as well as add and delete lectures.
